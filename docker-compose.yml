@@ -1,0 +1,10 @@
+services:
+  protocol-web:
+    build: .
+    container_name: ja-protokoll-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production

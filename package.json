@@ -1,0 +1,40 @@
+{
+  "name": "jugendausschuss-protokoll-generator-web",
+  "private": true,
+  "version": "1.0.0",
+  "author": "Lukas Rischmüller",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
+    "dev:all": "concurrently -k \"node server.js\" \"vite\"",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "cors": "^2.8.5",
+    "docx": "^9.8.1",
+    "express": "^4.21.2",
+    "lucide-react": "^1.42.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.3.289",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^6.0.2",
+    "concurrently": "^9.1.2",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.3",
+    "vite": "^8.0.16"
+  }
+}
