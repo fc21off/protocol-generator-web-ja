@@ -25,7 +25,6 @@ import { CompilerModal } from "./components/CompilerModal";
 import { HomeScreen } from "./components/HomeScreen";
 import { NewProtocolModal } from "./components/NewProtocolModal";
 import { HistoryModal } from "./components/HistoryModal";
-import { SplashScreen } from "./components/SplashScreen";
 import { useHistoryState } from "./hooks/useHistoryState";
 import { generateProtocolDocx } from "./utils/docxExport";
 import {
@@ -36,16 +35,6 @@ import {
 } from "./utils/historyManager";
 
 export function App() {
-  const [showSplash, setShowSplash] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const isMobileDevice =
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1) ||
-      window.innerWidth < 1024 ||
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true;
-    return isMobileDevice;
-  });
   const [currentScreen, setCurrentScreen] = useState<"home" | "editor">("home");
   const [isNewProtocolModalOpen, setIsNewProtocolModalOpen] = useState(false);
 
@@ -784,9 +773,6 @@ export function App() {
         onDeleteProtocol={handleDeleteProtocolFromHistory}
         onClearHistory={handleClearHistory}
       />
-
-      {/* App Opening Animation on Mobile */}
-      {showSplash && <SplashScreen onFinish={() => setShowSplash(false)} />}
     </div>
   );
 }
