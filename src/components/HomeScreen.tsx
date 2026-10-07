@@ -33,12 +33,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         window.matchMedia("(display-mode: standalone)").matches ||
         (window.navigator as any).standalone === true ||
         Boolean((window as any).__TAURI_INTERNALS__);
-      // Mobile / tablet user-agent check
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-        navigator.userAgent
-      );
-      // Only show on PC/Desktop running inside regular web browser
-      const isDesktop = !isStandalone && !isMobileDevice && window.innerWidth >= 768;
+      // Check if user is actually running Windows OS
+      const isWindows = /Windows NT|Win64|WOW64|Win32/i.test(navigator.userAgent);
+      // iPadOS detection (modern iPads identify as MacIntel with touch points)
+      const isIPad =
+        /iPad/i.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      // General mobile or tablet detection
+      const isMobileOrTablet =
+        /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+        isIPad ||
+        ("ontouchstart" in window && !isWindows);
+      // Only show for genuine Windows desktop PC in regular browser
+      const isDesktop = !isStandalone && !isMobileOrTablet && isWindows && window.innerWidth >= 768;
       setShowDesktopDownload(isDesktop);
     };
 

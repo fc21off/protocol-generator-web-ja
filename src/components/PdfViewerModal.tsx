@@ -149,6 +149,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const [penColor, setPenColor] = useState<string>("#1d4ed8");
   const [strokeWidth, setStrokeWidth] = useState<number>(3.2);
   const [pageStrokes, setPageStrokes] = useState<Record<number, Stroke[]>>({});
+  const pageStrokesRef = useRef<Record<number, Stroke[]>>({});
   const [isProcessingSave, setIsProcessingSave] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -361,7 +362,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const redrawPageStrokes = useCallback(
     (pageNum: number, strokes: Stroke[]) => {
       const canvas = drawingCanvasesRef.current[pageNum];
-      if (!canvas) return;
+      if (!canvas || canvas.width === 0 || canvas.height === 0) return;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       renderStrokesToCanvas(ctx, strokes, canvas.width, canvas.height);
@@ -369,7 +370,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     []
   );
 
-  // 1. Render PDF pages onto PDF canvases (only when PDF loads or zoom changes)
+  // 1. Render PDF pages onto PDF canvases (when PDF loads or zoom changes)
   useEffect(() => {
     if (!pdfDocRef.current || numPages === 0 || isLoadingPdf) return;
 
@@ -402,6 +403,10 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           drawCanvas.style.width = cssWidth;
           drawCanvas.style.height = cssHeight;
 
+          // Redraw strokes IMMEDIATELY on this resized canvas so strokes never disappear!
+          const strokes = pageStrokesRef.current[pageNum] || [];
+          redrawPageStrokes(pageNum, strokes);
+
           const ctx = pdfCanvas.getContext("2d");
           if (ctx) {
             const renderContext = {
@@ -410,8 +415,17 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
             };
             await page.render(renderContext as any).promise;
           }
+
+          // Redraw again after PDF page render to ensure stroke layer is crisp
+          redrawPageStrokes(pageNum, pageStrokesRef.current[pageNum] || []);
         } catch (err) {
           console.error(`Fehler beim Rendern von Seite ${pageNum}:`, err);
+        }
+      }
+
+      if (!isCancelled) {
+        for (let p = 1; p <= numPages; p++) {
+          redrawPageStrokes(p, pageStrokesRef.current[p] || []);
         }
       }
     };
@@ -421,15 +435,23 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [numPages, zoomScale, isLoadingPdf]);
+  }, [numPages, zoomScale, isLoadingPdf, redrawPageStrokes]);
 
-  // 2. Redraw strokes on drawing canvases (without touching or re-rendering PDF canvases)
+  // 2. Redraw strokes on drawing canvases whenever pageStrokes state updates
   useEffect(() => {
+    pageStrokesRef.current = pageStrokes;
     for (let pageNum = 1; pageNum <= numPages; pageNum++) {
       const strokes = pageStrokes[pageNum] || [];
       redrawPageStrokes(pageNum, strokes);
     }
-  }, [numPages, zoomScale, pageStrokes, redrawPageStrokes]);
+  }, [numPages, pageStrokes, redrawPageStrokes]);
+
+  // 3. Keep strokes visible whenever switching between "view" and "pen" modes
+  useEffect(() => {
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      redrawPageStrokes(pageNum, pageStrokesRef.current[pageNum] || []);
+    }
+  }, [toolMode, numPages, redrawPageStrokes]);
 
   // Pointer event handlers for drawing
   const getNormalizedPoint = (
