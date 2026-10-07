@@ -162,17 +162,20 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   // Active touch pointers for 2-finger pan & pinch zoom in drawing mode
   const activeTouchesRef = useRef<Map<number, { clientX: number; clientY: number }>>(new Map());
   const isTwoFingerGestureRef = useRef<boolean>(false);
-  const lastGestureStateRef = useRef<{ midX: number; midY: number; dist: number } | null>(null);
 
   // Touch pointers for 2-finger pan & pinch zoom in view mode
   const containerTouchesRef = useRef<Map<number, { clientX: number; clientY: number }>>(new Map());
-  const pinchStartRef = useRef<{
-    dist: number;
+
+  // Unified pinch-to-zoom state & pages wrapper ref for smooth GPU scaling without canvas flashing
+  const pagesWrapperRef = useRef<HTMLDivElement | null>(null);
+  const pinchGestureRef = useRef<{
+    startDist: number;
     startZoom: number;
     startScrollLeft: number;
     startScrollTop: number;
-    midX: number;
-    midY: number;
+    startMidX: number;
+    startMidY: number;
+    scaleFactor: number;
   } | null>(null);
 
   // Mouse / single-finger drag-to-pan in view mode
@@ -202,13 +205,14 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         const midX = (t1.clientX + t2.clientX) / 2;
         const midY = (t1.clientY + t2.clientY) / 2;
 
-        pinchStartRef.current = {
-          dist: Math.max(dist, 1),
+        pinchGestureRef.current = {
+          startDist: Math.max(dist, 10),
           startZoom: zoomScale,
           startScrollLeft: containerRef.current?.scrollLeft || 0,
           startScrollTop: containerRef.current?.scrollTop || 0,
-          midX,
-          midY,
+          startMidX: midX,
+          startMidY: midY,
+          scaleFactor: 1,
         };
         return;
       }
@@ -241,17 +245,23 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         const currentMidX = (t1.clientX + t2.clientX) / 2;
         const currentMidY = (t1.clientY + t2.clientY) / 2;
 
-        if (pinchStartRef.current && containerRef.current) {
-          // Pinch to zoom
-          const scaleFactor = currentDist / pinchStartRef.current.dist;
-          const newZoom = Math.max(0.4, Math.min(2.5, pinchStartRef.current.startZoom * scaleFactor));
-          setZoomScale(Number(newZoom.toFixed(2)));
+        if (pinchGestureRef.current && containerRef.current) {
+          const { startDist, startZoom, startScrollLeft, startScrollTop, startMidX, startMidY } = pinchGestureRef.current;
+
+          // Smooth CSS visual scale without re-rendering or canvas wiping
+          const rawScale = currentDist / startDist;
+          const clampedScale = Math.max(0.4 / startZoom, Math.min(2.5 / startZoom, rawScale));
+          pinchGestureRef.current.scaleFactor = clampedScale;
+
+          if (pagesWrapperRef.current) {
+            pagesWrapperRef.current.style.transform = `scale(${clampedScale})`;
+          }
 
           // Two-finger pan
-          const deltaX = currentMidX - pinchStartRef.current.midX;
-          const deltaY = currentMidY - pinchStartRef.current.midY;
-          containerRef.current.scrollLeft = pinchStartRef.current.startScrollLeft - deltaX;
-          containerRef.current.scrollTop = pinchStartRef.current.startScrollTop - deltaY;
+          const deltaX = currentMidX - startMidX;
+          const deltaY = currentMidY - startMidY;
+          containerRef.current.scrollLeft = startScrollLeft - deltaX;
+          containerRef.current.scrollTop = startScrollTop - deltaY;
         }
         return;
       }
@@ -268,9 +278,35 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   const handleContainerPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === "touch") {
       containerTouchesRef.current.delete(e.pointerId);
-      if (containerTouchesRef.current.size < 2) {
-        pinchStartRef.current = null;
+
+      if (containerTouchesRef.current.size < 2 && pinchGestureRef.current) {
+        // End of pinch gesture: Commit final zoom scale and reset CSS transform!
+        const { startZoom, scaleFactor, startMidX, startMidY } = pinchGestureRef.current;
+        pinchGestureRef.current = null;
+
+        if (pagesWrapperRef.current) {
+          pagesWrapperRef.current.style.transform = "";
+        }
+
+        const finalZoom = Math.max(0.4, Math.min(2.5, Number((startZoom * scaleFactor).toFixed(2))));
+        if (Math.abs(finalZoom - zoomScale) > 0.03 && containerRef.current) {
+          const container = containerRef.current;
+          const rect = container.getBoundingClientRect();
+          const pivotX = startMidX - rect.left + container.scrollLeft;
+          const pivotY = startMidY - rect.top + container.scrollTop;
+          const ratio = finalZoom / startZoom;
+
+          setZoomScale(finalZoom);
+
+          requestAnimationFrame(() => {
+            if (containerRef.current) {
+              containerRef.current.scrollLeft = pivotX * ratio - (startMidX - rect.left);
+              containerRef.current.scrollTop = pivotY * ratio - (startMidY - rect.top);
+            }
+          });
+        }
       }
+
       if (containerTouchesRef.current.size === 1) {
         // Re-anchor single touch pan so there's no jump
         const remaining = Array.from(containerTouchesRef.current.values())[0];
@@ -296,6 +332,29 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
       } catch {}
     }
   };
+
+  // Smooth discrete zoom steps (for + / - buttons) that preserves center position
+  const handleZoomStep = useCallback((delta: number) => {
+    setZoomScale((currentZoom) => {
+      const newScale = Math.max(0.4, Math.min(2.5, Number((currentZoom + delta).toFixed(2))));
+      if (newScale === currentZoom) return currentZoom;
+
+      if (containerRef.current) {
+        const container = containerRef.current;
+        const scrollCenterX = container.scrollLeft + container.clientWidth / 2;
+        const scrollCenterY = container.scrollTop + container.clientHeight / 2;
+        const ratio = newScale / currentZoom;
+
+        requestAnimationFrame(() => {
+          if (containerRef.current) {
+            containerRef.current.scrollLeft = scrollCenterX * ratio - container.clientWidth / 2;
+            containerRef.current.scrollTop = scrollCenterY * ratio - container.clientHeight / 2;
+          }
+        });
+      }
+      return newScale;
+    });
+  }, []);
 
   // Fit page width to current container
   const handleFitWidth = useCallback(() => {
@@ -501,7 +560,16 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         const midX = (t1.clientX + t2.clientX) / 2;
         const midY = (t1.clientY + t2.clientY) / 2;
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
-        lastGestureStateRef.current = { midX, midY, dist };
+
+        pinchGestureRef.current = {
+          startDist: Math.max(dist, 10),
+          startZoom: zoomScale,
+          startScrollLeft: containerRef.current?.scrollLeft || 0,
+          startScrollTop: containerRef.current?.scrollTop || 0,
+          startMidX: midX,
+          startMidY: midY,
+          scaleFactor: 1,
+        };
         return;
       }
     }
@@ -562,31 +630,29 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
       if (activeTouchesRef.current.size >= 2 || isTwoFingerGestureRef.current) {
         const touches = Array.from(activeTouchesRef.current.values());
-        if (touches.length >= 2) {
+        if (touches.length >= 2 && pinchGestureRef.current && containerRef.current) {
           const t1 = touches[0];
           const t2 = touches[1];
-          const midX = (t1.clientX + t2.clientX) / 2;
-          const midY = (t1.clientY + t2.clientY) / 2;
-          const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+          const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+          const currentMidX = (t1.clientX + t2.clientX) / 2;
+          const currentMidY = (t1.clientY + t2.clientY) / 2;
 
-          if (lastGestureStateRef.current && containerRef.current) {
-            const deltaX = midX - lastGestureStateRef.current.midX;
-            const deltaY = midY - lastGestureStateRef.current.midY;
+          const { startDist, startZoom, startScrollLeft, startScrollTop, startMidX, startMidY } = pinchGestureRef.current;
 
-            containerRef.current.scrollLeft -= deltaX;
-            containerRef.current.scrollTop -= deltaY;
+          // Smooth CSS visual scale without re-rendering or canvas wiping
+          const rawScale = currentDist / startDist;
+          const clampedScale = Math.max(0.4 / startZoom, Math.min(2.5 / startZoom, rawScale));
+          pinchGestureRef.current.scaleFactor = clampedScale;
 
-            if (lastGestureStateRef.current.dist > 15 && dist > 15) {
-              const scaleFactor = dist / lastGestureStateRef.current.dist;
-              if (Math.abs(scaleFactor - 1) > 0.03) {
-                setZoomScale((prev) => {
-                  const newScale = Math.max(0.4, Math.min(2.5, prev * scaleFactor));
-                  return Number(newScale.toFixed(2));
-                });
-              }
-            }
+          if (pagesWrapperRef.current) {
+            pagesWrapperRef.current.style.transform = `scale(${clampedScale})`;
           }
-          lastGestureStateRef.current = { midX, midY, dist };
+
+          // Two-finger pan
+          const deltaX = currentMidX - startMidX;
+          const deltaY = currentMidY - startMidY;
+          containerRef.current.scrollLeft = startScrollLeft - deltaX;
+          containerRef.current.scrollTop = startScrollTop - deltaY;
         }
         return;
       }
@@ -638,11 +704,37 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   ) => {
     if (e.pointerType === "touch") {
       activeTouchesRef.current.delete(e.pointerId);
-      if (activeTouchesRef.current.size < 2) {
-        lastGestureStateRef.current = null;
-        if (activeTouchesRef.current.size === 0) {
-          isTwoFingerGestureRef.current = false;
+
+      if (activeTouchesRef.current.size < 2 && pinchGestureRef.current) {
+        // End of pinch gesture: Commit final zoom scale and reset CSS transform!
+        const { startZoom, scaleFactor, startMidX, startMidY } = pinchGestureRef.current;
+        pinchGestureRef.current = null;
+
+        if (pagesWrapperRef.current) {
+          pagesWrapperRef.current.style.transform = "";
         }
+
+        const finalZoom = Math.max(0.4, Math.min(2.5, Number((startZoom * scaleFactor).toFixed(2))));
+        if (Math.abs(finalZoom - zoomScale) > 0.03 && containerRef.current) {
+          const container = containerRef.current;
+          const rect = container.getBoundingClientRect();
+          const pivotX = startMidX - rect.left + container.scrollLeft;
+          const pivotY = startMidY - rect.top + container.scrollTop;
+          const ratio = finalZoom / startZoom;
+
+          setZoomScale(finalZoom);
+
+          requestAnimationFrame(() => {
+            if (containerRef.current) {
+              containerRef.current.scrollLeft = pivotX * ratio - (startMidX - rect.left);
+              containerRef.current.scrollTop = pivotY * ratio - (startMidY - rect.top);
+            }
+          });
+        }
+      }
+
+      if (activeTouchesRef.current.size === 0) {
+        isTwoFingerGestureRef.current = false;
       }
       if (isTwoFingerGestureRef.current) {
         return;
@@ -678,9 +770,14 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   ) => {
     if (e.pointerType === "touch") {
       activeTouchesRef.current.delete(e.pointerId);
+      if (activeTouchesRef.current.size < 2 && pinchGestureRef.current) {
+        pinchGestureRef.current = null;
+        if (pagesWrapperRef.current) {
+          pagesWrapperRef.current.style.transform = "";
+        }
+      }
       if (activeTouchesRef.current.size === 0) {
         isTwoFingerGestureRef.current = false;
-        lastGestureStateRef.current = null;
       }
     }
     if (isDrawingRef.current && currentStrokeRef.current) {
@@ -1036,7 +1133,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 ml-auto">
             <button
               type="button"
-              onClick={() => setZoomScale((prev) => Math.max(0.4, Number((prev - 0.15).toFixed(2))))}
+              onClick={() => handleZoomStep(-0.15)}
               className="p-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors shrink-0"
               title="Verkleinern"
             >
@@ -1047,7 +1144,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
             </span>
             <button
               type="button"
-              onClick={() => setZoomScale((prev) => Math.min(2.5, Number((prev + 0.15).toFixed(2))))}
+              onClick={() => handleZoomStep(0.15)}
               className="p-1.5 text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-100 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-lg transition-colors shrink-0"
               title="Vergrößern"
             >
@@ -1075,7 +1172,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
             toolMode === "view" ? "cursor-grab active:cursor-grabbing touch-pan-x touch-pan-y" : ""
           }`}
         >
-          <div className="flex flex-col items-center gap-4 sm:gap-6 min-w-full w-max m-auto">
+          <div
+            ref={pagesWrapperRef}
+            className="flex flex-col items-center gap-4 sm:gap-6 min-w-full w-max m-auto transition-none"
+            style={{ transformOrigin: "center center", willChange: "transform" }}
+          >
             {isLoadingPdf ? (
               <div className="m-auto flex flex-col items-center justify-center space-y-3 text-slate-500 dark:text-zinc-400 py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-[#4A227A] dark:text-violet-400" />
