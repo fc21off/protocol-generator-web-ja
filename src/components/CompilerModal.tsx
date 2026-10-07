@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   AlertTriangle,
   RotateCcw,
-  HardDrive,
   Globe,
   Loader2,
 } from "lucide-react";
@@ -45,7 +44,7 @@ export const CompilerModal: React.FC<CompilerModalProps> = ({
           <div className="flex items-center gap-2.5">
             <Cpu className="w-5 h-5 text-violet-400" />
             <h2 className="text-sm font-bold tracking-tight">
-              LaTeX Compiler &amp; Server-Status
+              PDF-Dienst &amp; Server-Status
             </h2>
           </div>
           <button
@@ -67,7 +66,7 @@ export const CompilerModal: React.FC<CompilerModalProps> = ({
             )}
             <div className="text-xs space-y-1">
               <div className="font-semibold text-slate-800 dark:text-zinc-100 flex items-center gap-1.5">
-                <span>Backend-Compiler:</span>
+                <span>PDF-Dienst:</span>
                 <span
                   className={
                     compilerStatus?.isAvailable
@@ -75,24 +74,18 @@ export const CompilerModal: React.FC<CompilerModalProps> = ({
                       : "text-amber-700 dark:text-amber-300"
                   }
                 >
-                  {compilerStatus?.isAvailable ? "Bereit" : "Kein Compiler aktiv"}
+                  {compilerStatus?.isAvailable ? "Bereit" : "Aktuell nicht erreichbar"}
                 </span>
               </div>
               <p className="text-slate-600 dark:text-zinc-300">
-                Erkannter Compiler:{" "}
+                Status:{" "}
                 <strong className="text-slate-900 dark:text-zinc-100">
-                  {compilerStatus?.compilerName || "Unbekannt / Offline"}
+                  {compilerStatus?.isAvailable ? "Online (Bereit)" : "Offline"}
                 </strong>
               </p>
-              {compilerStatus?.path && (
-                <p className="font-mono text-[11px] text-slate-500 dark:text-zinc-400 break-all flex items-center gap-1">
-                  <HardDrive className="w-3 h-3 text-slate-400 dark:text-zinc-500 shrink-0" />
-                  <span>{compilerStatus.path}</span>
-                </p>
-              )}
               {compilerStatus?.platform && (
                 <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                  Server-Plattform: {compilerStatus.platform} ({compilerStatus.nodeVersion})
+                  Server-System: {compilerStatus.platform}
                 </p>
               )}
             </div>
@@ -101,13 +94,13 @@ export const CompilerModal: React.FC<CompilerModalProps> = ({
           <div className="text-xs text-slate-600 dark:text-zinc-300 space-y-2 bg-violet-50/60 dark:bg-violet-950/40 p-3.5 rounded-xl border border-violet-100 dark:border-violet-900/60">
             <p className="font-semibold text-[#4A227A] dark:text-violet-300 flex items-center gap-1.5">
               <Globe className="w-3.5 h-3.5" />
-              <span>Server- &amp; PDF-Architektur</span>
+              <span>PDF- und Dokumentenerstellung</span>
             </p>
             <p>
-              Das PDF wird serverseitig über <strong>Tectonic</strong> oder <strong>XeLaTeX</strong> kompiliert. Word-Dokumente (.docx) werden direkt auf dem Gerät erzeugt.
+              PDF-Dokumente werden über den Server in hoher Druckqualität inklusive Unterschriftenfeld gerendert. Word-Dokumente (.docx) werden direkt auf deinem Gerät erzeugt.
             </p>
             <p>
-              Für den Live-Betrieb auf dem Server ist ein fertiges <strong>Dockerfile</strong> und <strong>docker-compose.yml</strong> im Projekt enthalten.
+              Alle Eingaben verbleiben auf deinem Gerät und werden nur bei der PDF-Generierung kurzzeitig zur Verarbeitung übertragen.
             </p>
           </div>
         </div>

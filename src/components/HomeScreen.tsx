@@ -48,8 +48,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   }, []);
   return (
     <div className="min-h-screen relative flex flex-col items-center justify-center bg-linear-to-b from-slate-50 via-slate-100 to-slate-200/80 dark:from-[#09090b] dark:via-[#121215] dark:to-[#09090b] p-4 sm:p-6 select-none animate-in fade-in duration-200 transition-colors overflow-y-auto">
-      {/* Top-Right Theme Toggle */}
-      <div className="absolute top-5 right-5">
+      {/* Top-Right Actions: Desktop App Download & Theme Toggle */}
+      <div className="absolute top-5 right-5 flex items-center gap-2">
+        {showDesktopDownload && (
+          <a
+            href="/downloads/Jugendausschuss_Protokoll_Generator_Setup.exe"
+            download="Jugendausschuss_Protokoll_Generator_Setup.exe"
+            title="Eigenständige App für schnelles Arbeiten am PC herunterladen (.exe)"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl border border-slate-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md text-slate-700 dark:text-zinc-200 hover:bg-violet-50 dark:hover:bg-zinc-800 hover:text-[#4A227A] dark:hover:text-violet-300 hover:border-violet-300 dark:hover:border-violet-700/60 transition-all shadow-xs text-xs font-medium group"
+          >
+            <Download className="w-3.5 h-3.5 text-[#4A227A] dark:text-violet-400 group-hover:scale-110 transition-transform" />
+            <span className="hidden sm:inline">Desktop-App</span>
+          </a>
+        )}
         <button
           type="button"
           onClick={onToggleTheme}
@@ -154,39 +165,6 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
               </div>
             </button>
           </div>
-
-          {/* Native Desktop App Installer Download Card (only in PC Browser, not in PWA and not on Mobile) */}
-          {showDesktopDownload && (
-            <div className="w-full pt-1 animate-in fade-in duration-150">
-              <a
-                href="/downloads/Jugendausschuss_Protokoll_Generator_Setup.exe"
-                download="Jugendausschuss_Protokoll_Generator_Setup.exe"
-                className="w-full p-3.5 rounded-2xl bg-gradient-to-r from-slate-50 to-violet-50/40 dark:from-zinc-900/80 dark:to-violet-950/20 hover:from-violet-50 hover:to-violet-100/60 dark:hover:from-zinc-800 dark:hover:to-violet-900/30 border border-slate-200 dark:border-zinc-800 hover:border-violet-300 dark:hover:border-violet-600/50 shadow-xs transition-all flex items-center justify-between text-left group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-xl bg-[#4A227A] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
-                    <Download className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 truncate group-hover:text-[#4A227A] dark:group-hover:text-violet-300 transition-colors">
-                        Windows Desktop-App herunterladen
-                      </span>
-                      <span className="text-[10px] font-semibold bg-violet-100 dark:bg-violet-900/60 text-[#4A227A] dark:text-violet-300 px-1.5 py-0.2 rounded-full shrink-0">
-                        .exe Installer
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-slate-500 dark:text-zinc-400 block truncate">
-                      Native Rust/Tauri App für schnelles Arbeiten am PC ohne Browser
-                    </span>
-                  </div>
-                </div>
-                <div className="text-slate-400 dark:text-zinc-500 group-hover:text-[#4A227A] dark:group-hover:text-violet-400 pl-2 shrink-0">
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </a>
-            </div>
-          )}
         </div>
       </div>
     </div>

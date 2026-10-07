@@ -136,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
               {isCompiling ? (
                 <>
                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Kompiliere PDF...</span>
+                  <span>Erstelle PDF...</span>
                 </>
               ) : (
                 <>
@@ -164,6 +164,18 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
           </div>
+
+          {/* Desktop App Download Button (Desktop browser only) */}
+          {showDesktopDownload && (
+            <a
+              href="/downloads/Jugendausschuss_Protokoll_Generator_Setup.exe"
+              download="Jugendausschuss_Protokoll_Generator_Setup.exe"
+              title="Eigenständige App für schnelles Arbeiten am PC herunterladen (.exe)"
+              className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-violet-50 dark:hover:bg-zinc-700/80 hover:text-[#4A227A] dark:hover:text-violet-300 hover:border-violet-300 dark:hover:border-violet-700/60 transition-colors shadow-xs"
+            >
+              <Download className="w-4 h-4 text-[#4A227A] dark:text-violet-400" />
+            </a>
+          )}
 
           {/* Dark / Light Mode Toggle Button */}
           <button
@@ -207,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <div className="flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-violet-600 dark:text-violet-400 shrink-0" />
-                <span className="font-medium">Compiler-Status</span>
+                <span className="font-medium">PDF-Dienst</span>
               </div>
               {compilerStatus?.isAvailable ? (
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">
@@ -217,7 +229,7 @@ export const Header: React.FC<HeaderProps> = ({
               ) : (
                 <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
                   <AlertTriangle className="w-3 h-3" />
-                  Fehlt
+                  Offline
                 </span>
               )}
             </button>
@@ -292,7 +304,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="w-full px-3.5 py-2 text-left text-xs flex items-center gap-2.5 text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition-colors"
             >
               <CloudUpload className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-              <span>VPS Server-Übertragung</span>
+              <span>Server-Ablage</span>
             </button>
 
             {/* Download Windows Desktop App (only in PC Browser, not in PWA and not on Mobile) */}
@@ -302,12 +314,16 @@ export const Header: React.FC<HeaderProps> = ({
                 <a
                   href="/downloads/Jugendausschuss_Protokoll_Generator_Setup.exe"
                   download="Jugendausschuss_Protokoll_Generator_Setup.exe"
+                  title="Eigenständige App für schnelles Arbeiten am PC herunterladen (.exe)"
                   onClick={() => setIsMenuOpen(false)}
                   className="w-full px-3.5 py-2 text-left text-xs flex items-center justify-between text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition-colors"
                 >
                   <div className="flex items-center gap-2.5">
                     <Download className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-                    <span className="font-medium">Desktop-App (.exe)</span>
+                    <div className="flex flex-col">
+                      <span className="font-medium">Desktop-App (.exe)</span>
+                      <span className="text-[10px] text-slate-400 dark:text-zinc-500">Eigenständige App für schnelles Arbeiten am PC</span>
+                    </div>
                   </div>
                   <span className="text-[10px] font-semibold text-violet-700 dark:text-violet-300 bg-violet-50 dark:bg-violet-950/60 px-1.5 py-0.5 rounded border border-violet-200 dark:border-violet-800/50">
                     Windows
@@ -347,7 +363,7 @@ export const Header: React.FC<HeaderProps> = ({
           {isCompiling ? (
             <>
               <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Kompiliere PDF...</span>
+              <span>Erstelle PDF...</span>
             </>
           ) : (
             <>

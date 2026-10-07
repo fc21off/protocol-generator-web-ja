@@ -230,10 +230,10 @@ export function App() {
         } catch {
           errText =
             response.status === 504
-              ? "Gateway Timeout: Der Server brauchte zu lange zum Kompilieren (erster LaTeX-Start)."
+              ? "Zeitüberschreitung: Die PDF-Erstellung hat zu lange gedauert. Bitte versuche es noch einmal."
               : `HTTP-Status ${response.status} (${response.statusText || "Fehler"})`;
         }
-        setErrorMessage(`Serverfehler beim Kompilieren: ${errText}`);
+        setErrorMessage(`Serverfehler bei der PDF-Erstellung: ${errText}`);
         return;
       }
 
@@ -244,12 +244,12 @@ export function App() {
         setIsPdfModalOpen(true);
       } else {
         setErrorMessage(
-          result.errorMessage || "Kompilierung fehlgeschlagen ohne Fehlermeldung."
+          result.errorMessage || "PDF-Erstellung fehlgeschlagen."
         );
       }
     } catch (err: unknown) {
       const errStr = err instanceof Error ? err.message : String(err);
-      setErrorMessage(`Netzwerkfehler oder Server nicht erreichbar: ${errStr}`);
+      setErrorMessage(`Verbindung zum Server fehlgeschlagen oder Server offline: ${errStr}`);
     } finally {
       setIsCompiling(false);
     }
@@ -718,7 +718,7 @@ export function App() {
                 {isCompiling ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Kompiliere PDF...</span>
+                    <span>Erstelle PDF...</span>
                   </>
                 ) : (
                   <>

@@ -90,7 +90,7 @@ export const ServerUploadModal: React.FC<ServerUploadModalProps> = ({
           <div className="flex items-center gap-2.5">
             <CloudUpload className="w-5 h-5 text-violet-300" />
             <h2 className="text-sm font-bold tracking-tight">
-              VPS Server-Übertragung
+              Server-Ablage / Übertragung
             </h2>
           </div>
           <button
@@ -105,19 +105,19 @@ export const ServerUploadModal: React.FC<ServerUploadModalProps> = ({
         {/* Form Body */}
         <div className="p-5 space-y-4">
           <div className="p-3 bg-violet-50 dark:bg-violet-950/40 rounded-xl border border-violet-100 dark:border-violet-900/60 text-xs text-slate-700 dark:text-zinc-300 leading-relaxed">
-            <span className="font-bold text-[#4A227A] dark:text-violet-300">Vorbereitete Schnittstelle:</span> Sobald der VPS-Server aktiv ist, können Protokolle und PDFs direkt über diesen Endpunkt übermittelt werden.
+            <span className="font-bold text-[#4A227A] dark:text-violet-300">Zentrale Speicherung:</span> Übertrage fertige Protokolle und PDFs direkt an den Server zur sicheren Ablage und Archivierung.
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
               <Server className="w-3.5 h-3.5 text-slate-400" />
-              <span>Server-Endpunkt / API URL</span>
+              <span>Server-Adresse / Ziel-URL</span>
             </label>
             <input
               type="text"
               value={serverUrl}
               onChange={(e) => setServerUrl(e.target.value)}
-              placeholder="/api/upload oder https://dein-vps.de/api/upload"
+              placeholder="/api/upload oder https://beispiel.de/api/upload"
               className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 dark:focus:border-violet-400 font-mono placeholder:text-slate-400 dark:placeholder:text-zinc-600"
             />
           </div>
@@ -125,13 +125,13 @@ export const ServerUploadModal: React.FC<ServerUploadModalProps> = ({
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1 flex items-center gap-1.5">
               <Key className="w-3.5 h-3.5 text-slate-400" />
-              <span>API Token / Zugangs-Schlüssel</span>
+              <span>Zugangs-Passwort / Token (optional)</span>
             </label>
             <input
               type="password"
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Bearer Token oder Passwort (optional)..."
+              placeholder="Passwort oder Token (optional)..."
               className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 text-slate-800 dark:text-zinc-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 dark:focus:border-violet-400 font-mono placeholder:text-slate-400 dark:placeholder:text-zinc-600"
             />
           </div>
