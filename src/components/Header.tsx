@@ -174,18 +174,6 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
 
-          {/* Desktop App Download Button (Desktop browser only) */}
-          {showDesktopDownload && (
-            <a
-              href="/downloads/Jugendausschuss_Protokoll_Generator_Setup.exe"
-              download="Jugendausschuss_Protokoll_Generator_Setup.exe"
-              title="Eigenständige App für schnelles Arbeiten am PC herunterladen (.exe)"
-              className="p-2 rounded-xl border border-slate-200 dark:border-zinc-700/80 bg-white dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-violet-50 dark:hover:bg-zinc-700/80 hover:text-[#4A227A] dark:hover:text-violet-300 hover:border-violet-300 dark:hover:border-violet-700/60 transition-colors shadow-xs"
-            >
-              <Download className="w-4 h-4 text-[#4A227A] dark:text-violet-400" />
-            </a>
-          )}
-
           {/* Dark / Light Mode Toggle Button */}
           <button
             type="button"
