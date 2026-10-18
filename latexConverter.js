@@ -61,6 +61,9 @@ export function formatInlineMarkdown(escapedInput) {
   text = text.replaceAll("[X]", "\\textbf{[\\checkmark]}");
   text = text.replaceAll("[ ]", "[${\\;}$]");
 
+  // Bold + Italic: ***text***
+  text = text.replace(/\*\*\*(.*?)\*\*\*/g, "\\textbf{\\textit{$1}}");
+
   // Bold: **text**
   text = text.replace(/\*\*(.*?)\*\*/g, "\\textbf{$1}");
 
@@ -153,7 +156,9 @@ export function textToLatexBlock(input) {
     const line = lines[i];
     const lineTrimmed = line.trim();
 
-    if (!lineTrimmed) {
+    // Check for markdown horizontal rule / divider line: ***, ---, ___, * * *, etc.
+    const isDivider = /^[ \t]*([*\-_])(?:\s*\1){2,}\s*$/.test(lineTrimmed);
+    if (isDivider) {
       if (inItemize) {
         output += "\\end{itemize}\n";
         inItemize = false;
@@ -162,8 +167,50 @@ export function textToLatexBlock(input) {
         output += "\\end{enumerate}\n";
         inEnumerate = false;
       }
-      output += "\\vspace{1.5mm}\\par\n";
+      output += "\\vspace{2mm}\\noindent\\rule{\\linewidth}{0.4pt}\\vspace{2mm}\\par\n";
       i++;
+      continue;
+    }
+
+    if (!lineTrimmed) {
+      // Find the next non-empty line
+      let nextIdx = i + 1;
+      while (nextIdx < lines.length && !lines[nextIdx].trim()) {
+        nextIdx++;
+      }
+      const nextLineTrimmed = nextIdx < lines.length ? lines[nextIdx].trim() : "";
+      const nextIsBullet =
+        nextLineTrimmed.startsWith("•") ||
+        nextLineTrimmed.startsWith("- ") ||
+        nextLineTrimmed.startsWith("* ") ||
+        nextLineTrimmed.startsWith("+ ");
+      const nextIsNumbered = /^(\d+)\.\s+(.*)$/.test(nextLineTrimmed);
+
+      if (inItemize && nextIsBullet) {
+        // Still inside bullet list! Do not break itemize, skip the blank lines
+        i = nextIdx;
+        continue;
+      }
+
+      if (inEnumerate && nextIsNumbered) {
+        // Still inside numbered list! Do not break enumerate, skip the blank lines
+        i = nextIdx;
+        continue;
+      }
+
+      // Ending the list (or not in a list)
+      if (inItemize) {
+        output += "\\end{itemize}\n";
+        inItemize = false;
+      }
+      if (inEnumerate) {
+        output += "\\end{enumerate}\n";
+        inEnumerate = false;
+      }
+
+      // Output paragraph break ONLY once (collapsing all consecutive blank lines)
+      output += "\\vspace{1.5mm}\\par\n";
+      i = nextIdx;
       continue;
     }
 
@@ -204,6 +251,18 @@ export function textToLatexBlock(input) {
     const matchNum = lineTrimmed.match(/^(\d+)\.\s+(.*)$/);
 
     if (isBullet) {
+      let itemContent = "";
+      if (lineTrimmed.startsWith("•")) {
+        itemContent = lineTrimmed.replace(/^•\s*/, "");
+      } else {
+        itemContent = lineTrimmed.substring(2).trim();
+      }
+
+      if (!itemContent) {
+        i++;
+        continue;
+      }
+
       if (inEnumerate) {
         output += "\\end{enumerate}\n";
         inEnumerate = false;
@@ -214,17 +273,16 @@ export function textToLatexBlock(input) {
         inItemize = true;
       }
 
-      let itemContent = "";
-      if (lineTrimmed.startsWith("•")) {
-        itemContent = lineTrimmed.replace(/^•\s*/, "");
-      } else {
-        itemContent = lineTrimmed.substring(2).trim();
-      }
-
       const escaped = escapeLatexSpecialChars(itemContent);
       const formatted = formatInlineMarkdown(escaped);
       output += `  \\item ${formatted}\n`;
     } else if (matchNum) {
+      const itemContent = matchNum[2].trim();
+      if (!itemContent) {
+        i++;
+        continue;
+      }
+
       if (inItemize) {
         output += "\\end{itemize}\n";
         inItemize = false;
@@ -235,7 +293,6 @@ export function textToLatexBlock(input) {
         inEnumerate = true;
       }
 
-      const itemContent = matchNum[2].trim();
       const escaped = escapeLatexSpecialChars(itemContent);
       const formatted = formatInlineMarkdown(escaped);
       output += `  \\item ${formatted}\n`;

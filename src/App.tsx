@@ -58,6 +58,7 @@ export function App() {
 
   const [isCompiling, setIsCompiling] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
+  const [signedPdfBase64, setSignedPdfBase64] = useState<string | null>(null);
   const [compilerUsed, setCompilerUsed] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [compilerStatus, setCompilerStatus] = useState<CompilerStatus | null>(null);
@@ -240,6 +241,7 @@ export function App() {
       const result: CompileResult = await response.json();
       if (result.success && result.pdfBase64) {
         setPdfBase64(result.pdfBase64);
+        setSignedPdfBase64(null);
         setCompilerUsed(result.compilerUsed);
         setIsPdfModalOpen(true);
       } else {
@@ -740,8 +742,7 @@ export function App() {
         onDownload={(signedBase64) => handleSavePdf(signedBase64)}
         onExportDocx={handleExportDocx}
         onUpload={(signedBase64) => {
-          if (signedBase64) setPdfBase64(signedBase64);
-          setIsPdfModalOpen(false);
+          if (signedBase64) setSignedPdfBase64(signedBase64);
           setIsServerModalOpen(true);
         }}
         isSaving={isSaving}
@@ -753,7 +754,7 @@ export function App() {
         isOpen={isServerModalOpen}
         onClose={() => setIsServerModalOpen(false)}
         data={data}
-        pdfBase64={pdfBase64}
+        pdfBase64={signedPdfBase64 || pdfBase64}
       />
 
       {/* Compiler Setup Modal */}

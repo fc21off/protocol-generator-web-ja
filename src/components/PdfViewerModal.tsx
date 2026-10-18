@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import {
   Download,
   CloudUpload,
@@ -139,6 +139,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 }) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [isLoadingPdf, setIsLoadingPdf] = useState<boolean>(true);
+  const [pageDimensions, setPageDimensions] = useState<Record<number, { width: number; height: number }>>({});
   const [zoomScale, setZoomScale] = useState<number>(() => {
     if (typeof window !== "undefined" && window.innerWidth < 640) {
       return Math.max(0.45, Math.min(0.85, (window.innerWidth - 32) / 595));
@@ -154,6 +155,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pdfDocRef = useRef<any>(null);
+  const lastLoadedPdfRef = useRef<string | null>(null);
+  const pendingScrollRef = useRef<{ scrollLeft: number; scrollTop: number } | null>(null);
   const pageCanvasesRef = useRef<Record<number, HTMLCanvasElement | null>>({});
   const drawingCanvasesRef = useRef<Record<number, HTMLCanvasElement | null>>({});
   const currentStrokeRef = useRef<{ pageNum: number; stroke: Stroke } | null>(null);
@@ -175,8 +178,19 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     startScrollTop: number;
     startMidX: number;
     startMidY: number;
+    currentMidX: number;
+    currentMidY: number;
     scaleFactor: number;
   } | null>(null);
+
+  // Apply pending scroll seamlessly right after layout calculation
+  useLayoutEffect(() => {
+    if (pendingScrollRef.current && containerRef.current) {
+      containerRef.current.scrollLeft = pendingScrollRef.current.scrollLeft;
+      containerRef.current.scrollTop = pendingScrollRef.current.scrollTop;
+      pendingScrollRef.current = null;
+    }
+  }, [zoomScale, pageDimensions]);
 
   // Mouse / single-finger drag-to-pan in view mode
   const isPanningRef = useRef<boolean>(false);
@@ -205,6 +219,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         const midX = (t1.clientX + t2.clientX) / 2;
         const midY = (t1.clientY + t2.clientY) / 2;
 
+        if (pagesWrapperRef.current) {
+          const wrapperRect = pagesWrapperRef.current.getBoundingClientRect();
+          const originX = midX - wrapperRect.left;
+          const originY = midY - wrapperRect.top;
+          pagesWrapperRef.current.style.transformOrigin = `${originX}px ${originY}px`;
+        }
+
         pinchGestureRef.current = {
           startDist: Math.max(dist, 10),
           startZoom: zoomScale,
@@ -212,6 +233,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           startScrollTop: containerRef.current?.scrollTop || 0,
           startMidX: midX,
           startMidY: midY,
+          currentMidX: midX,
+          currentMidY: midY,
           scaleFactor: 1,
         };
         return;
@@ -252,6 +275,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           const rawScale = currentDist / startDist;
           const clampedScale = Math.max(0.4 / startZoom, Math.min(2.5 / startZoom, rawScale));
           pinchGestureRef.current.scaleFactor = clampedScale;
+          pinchGestureRef.current.currentMidX = currentMidX;
+          pinchGestureRef.current.currentMidY = currentMidY;
 
           if (pagesWrapperRef.current) {
             pagesWrapperRef.current.style.transform = `scale(${clampedScale})`;
@@ -281,29 +306,27 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
       if (containerTouchesRef.current.size < 2 && pinchGestureRef.current) {
         // End of pinch gesture: Commit final zoom scale and reset CSS transform!
-        const { startZoom, scaleFactor, startMidX, startMidY } = pinchGestureRef.current;
+        const { startZoom, scaleFactor, startScrollLeft, startScrollTop, startMidX, startMidY, currentMidX, currentMidY } = pinchGestureRef.current;
         pinchGestureRef.current = null;
 
         if (pagesWrapperRef.current) {
           pagesWrapperRef.current.style.transform = "";
+          pagesWrapperRef.current.style.transformOrigin = "center center";
         }
 
         const finalZoom = Math.max(0.4, Math.min(2.5, Number((startZoom * scaleFactor).toFixed(2))));
-        if (Math.abs(finalZoom - zoomScale) > 0.03 && containerRef.current) {
+        if (containerRef.current) {
           const container = containerRef.current;
           const rect = container.getBoundingClientRect();
-          const pivotX = startMidX - rect.left + container.scrollLeft;
-          const pivotY = startMidY - rect.top + container.scrollTop;
+          const pointInContainerX = startScrollLeft + (startMidX - rect.left);
+          const pointInContainerY = startScrollTop + (startMidY - rect.top);
           const ratio = finalZoom / startZoom;
 
-          setZoomScale(finalZoom);
+          const targetScrollLeft = pointInContainerX * ratio - (currentMidX - rect.left);
+          const targetScrollTop = pointInContainerY * ratio - (currentMidY - rect.top);
 
-          requestAnimationFrame(() => {
-            if (containerRef.current) {
-              containerRef.current.scrollLeft = pivotX * ratio - (startMidX - rect.left);
-              containerRef.current.scrollTop = pivotY * ratio - (startMidY - rect.top);
-            }
-          });
+          pendingScrollRef.current = { scrollLeft: targetScrollLeft, scrollTop: targetScrollTop };
+          setZoomScale(finalZoom);
         }
       }
 
@@ -381,6 +404,11 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   useEffect(() => {
     if (!isOpen || !pdfBase64) return;
 
+    if (lastLoadedPdfRef.current === pdfBase64 && pdfDocRef.current) {
+      return;
+    }
+    lastLoadedPdfRef.current = pdfBase64;
+
     let isMounted = true;
     setIsLoadingPdf(true);
     setPageStrokes({});
@@ -400,7 +428,18 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         if (isMounted) {
           pdfDocRef.current = doc;
           setNumPages(doc.numPages);
-          setIsLoadingPdf(false);
+
+          // Extract base page dimensions
+          const dims: Record<number, { width: number; height: number }> = {};
+          for (let p = 1; p <= doc.numPages; p++) {
+            const page = await doc.getPage(p);
+            const vp = page.getViewport({ scale: 1 });
+            dims[p] = { width: vp.width, height: vp.height };
+          }
+          if (isMounted) {
+            setPageDimensions(dims);
+            setIsLoadingPdf(false);
+          }
         }
       } catch (err) {
         console.error("Fehler beim Laden des PDFs in PDF.js:", err);
@@ -561,6 +600,13 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         const midY = (t1.clientY + t2.clientY) / 2;
         const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
 
+        if (pagesWrapperRef.current) {
+          const wrapperRect = pagesWrapperRef.current.getBoundingClientRect();
+          const originX = midX - wrapperRect.left;
+          const originY = midY - wrapperRect.top;
+          pagesWrapperRef.current.style.transformOrigin = `${originX}px ${originY}px`;
+        }
+
         pinchGestureRef.current = {
           startDist: Math.max(dist, 10),
           startZoom: zoomScale,
@@ -568,6 +614,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           startScrollTop: containerRef.current?.scrollTop || 0,
           startMidX: midX,
           startMidY: midY,
+          currentMidX: midX,
+          currentMidY: midY,
           scaleFactor: 1,
         };
         return;
@@ -643,6 +691,8 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
           const rawScale = currentDist / startDist;
           const clampedScale = Math.max(0.4 / startZoom, Math.min(2.5 / startZoom, rawScale));
           pinchGestureRef.current.scaleFactor = clampedScale;
+          pinchGestureRef.current.currentMidX = currentMidX;
+          pinchGestureRef.current.currentMidY = currentMidY;
 
           if (pagesWrapperRef.current) {
             pagesWrapperRef.current.style.transform = `scale(${clampedScale})`;
@@ -707,29 +757,27 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
 
       if (activeTouchesRef.current.size < 2 && pinchGestureRef.current) {
         // End of pinch gesture: Commit final zoom scale and reset CSS transform!
-        const { startZoom, scaleFactor, startMidX, startMidY } = pinchGestureRef.current;
+        const { startZoom, scaleFactor, startScrollLeft, startScrollTop, startMidX, startMidY, currentMidX, currentMidY } = pinchGestureRef.current;
         pinchGestureRef.current = null;
 
         if (pagesWrapperRef.current) {
           pagesWrapperRef.current.style.transform = "";
+          pagesWrapperRef.current.style.transformOrigin = "center center";
         }
 
         const finalZoom = Math.max(0.4, Math.min(2.5, Number((startZoom * scaleFactor).toFixed(2))));
-        if (Math.abs(finalZoom - zoomScale) > 0.03 && containerRef.current) {
+        if (containerRef.current) {
           const container = containerRef.current;
           const rect = container.getBoundingClientRect();
-          const pivotX = startMidX - rect.left + container.scrollLeft;
-          const pivotY = startMidY - rect.top + container.scrollTop;
+          const pointInContainerX = startScrollLeft + (startMidX - rect.left);
+          const pointInContainerY = startScrollTop + (startMidY - rect.top);
           const ratio = finalZoom / startZoom;
 
-          setZoomScale(finalZoom);
+          const targetScrollLeft = pointInContainerX * ratio - (currentMidX - rect.left);
+          const targetScrollTop = pointInContainerY * ratio - (currentMidY - rect.top);
 
-          requestAnimationFrame(() => {
-            if (containerRef.current) {
-              containerRef.current.scrollLeft = pivotX * ratio - (startMidX - rect.left);
-              containerRef.current.scrollTop = pivotY * ratio - (startMidY - rect.top);
-            }
-          });
+          pendingScrollRef.current = { scrollLeft: targetScrollLeft, scrollTop: targetScrollTop };
+          setZoomScale(finalZoom);
         }
       }
 
@@ -774,6 +822,7 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
         pinchGestureRef.current = null;
         if (pagesWrapperRef.current) {
           pagesWrapperRef.current.style.transform = "";
+          pagesWrapperRef.current.style.transformOrigin = "center center";
         }
       }
       if (activeTouchesRef.current.size === 0) {
@@ -1183,41 +1232,57 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
                 <p className="text-sm font-medium">Lade PDF Seiten zur Vorschau...</p>
               </div>
             ) : (
-              Array.from({ length: numPages }, (_, idx) => idx + 1).map((pageNum) => (
-                <div
-                  key={pageNum}
-                  className="relative bg-white shadow-xl rounded-sm border border-slate-300 dark:border-zinc-800 shrink-0 select-none overflow-hidden group min-w-fit"
-                >
-                  {/* Page Number Badge */}
-                  <div className="absolute top-2 right-2 z-20 px-2 py-0.5 text-[10px] font-semibold bg-black/60 text-white rounded-md backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                    Seite {pageNum} von {numPages}
+              Array.from({ length: numPages }, (_, idx) => idx + 1).map((pageNum) => {
+                const pWidth = Math.round((pageDimensions[pageNum]?.width || 595.28) * zoomScale);
+                const pHeight = Math.round((pageDimensions[pageNum]?.height || 841.89) * zoomScale);
+                return (
+                  <div
+                    key={pageNum}
+                    className="relative bg-white shadow-xl rounded-sm border border-slate-300 dark:border-zinc-800 shrink-0 select-none overflow-hidden group min-w-fit"
+                    style={{
+                      width: pWidth > 0 ? `${pWidth}px` : undefined,
+                      height: pHeight > 0 ? `${pHeight}px` : undefined,
+                    }}
+                  >
+                    {/* Page Number Badge */}
+                    <div className="absolute top-2 right-2 z-20 px-2 py-0.5 text-[10px] font-semibold bg-black/60 text-white rounded-md backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                      Seite {pageNum} von {numPages}
+                    </div>
+
+                    {/* PDF Render Canvas */}
+                    <canvas
+                      ref={(el) => {
+                        pageCanvasesRef.current[pageNum] = el;
+                      }}
+                      style={{
+                        width: pWidth > 0 ? `${pWidth}px` : undefined,
+                        height: pHeight > 0 ? `${pHeight}px` : undefined,
+                      }}
+                      className="block"
+                    />
+
+                    {/* Interactive Drawing Canvas */}
+                    <canvas
+                      ref={(el) => {
+                        drawingCanvasesRef.current[pageNum] = el;
+                      }}
+                      style={{
+                        width: pWidth > 0 ? `${pWidth}px` : undefined,
+                        height: pHeight > 0 ? `${pHeight}px` : undefined,
+                      }}
+                      onPointerDown={(e) => handlePointerDown(e, pageNum)}
+                      onPointerMove={(e) => handlePointerMove(e, pageNum)}
+                      onPointerUp={(e) => handlePointerUp(e, pageNum)}
+                      onPointerCancel={(e) => handlePointerCancel(e, pageNum)}
+                      className={`absolute inset-0 z-10 touch-none ${
+                        toolMode === "view"
+                          ? "cursor-default pointer-events-none"
+                          : "cursor-crosshair"
+                      }`}
+                    />
                   </div>
-
-                  {/* PDF Render Canvas */}
-                  <canvas
-                    ref={(el) => {
-                      pageCanvasesRef.current[pageNum] = el;
-                    }}
-                    className="block"
-                  />
-
-                  {/* Interactive Drawing Canvas */}
-                  <canvas
-                    ref={(el) => {
-                      drawingCanvasesRef.current[pageNum] = el;
-                    }}
-                    onPointerDown={(e) => handlePointerDown(e, pageNum)}
-                    onPointerMove={(e) => handlePointerMove(e, pageNum)}
-                    onPointerUp={(e) => handlePointerUp(e, pageNum)}
-                    onPointerCancel={(e) => handlePointerCancel(e, pageNum)}
-                    className={`absolute inset-0 z-10 touch-none ${
-                      toolMode === "view"
-                        ? "cursor-default pointer-events-none"
-                        : "cursor-crosshair"
-                    }`}
-                  />
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>

@@ -44,9 +44,9 @@ function parseInlineRuns(text: string, baseFontSize = 21): TextRun[] {
     .replace(/\[x\]/gi, "☑ ")
     .replace(/\[ \]/g, "☐ ");
 
-  // Tokenize bold (**...**) and italic (*...*)
+  // Tokenize bold+italic (***...***), bold (**...**), and italic (*...*)
   const runs: TextRun[] = [];
-  const regex = /(\*\*.*?\*\*|\*.*?\*)/g;
+  const regex = /(\*\*\*.*?\*\*\*|\*\*.*?\*\*|\*.*?\*)/g;
   let lastIdx = 0;
   let match: RegExpExecArray | null;
 
@@ -63,7 +63,18 @@ function parseInlineRuns(text: string, baseFontSize = 21): TextRun[] {
     }
 
     const token = match[0];
-    if (token.startsWith("**") && token.endsWith("**")) {
+    if (token.startsWith("***") && token.endsWith("***")) {
+      runs.push(
+        new TextRun({
+          text: token.substring(3, token.length - 3),
+          bold: true,
+          italics: true,
+          size: baseFontSize,
+          color: COLOR_TEXT,
+          font: "Calibri",
+        })
+      );
+    } else if (token.startsWith("**") && token.endsWith("**")) {
       runs.push(
         new TextRun({
           text: token.substring(2, token.length - 2),
@@ -218,13 +229,52 @@ function parseContentBlock(content: string): (Paragraph | Table)[] {
       flushTable();
     }
 
+    // Horizontal rule / divider line: ***, ---, ___
+    const isDivider = /^[ \t]*([*\-_])(?:\s*\1){2,}\s*$/.test(trimmed);
+    if (isDivider) {
+      elements.push(
+        new Paragraph({
+          border: {
+            bottom: {
+              color: COLOR_BORDER,
+              space: 4,
+              style: BorderStyle.SINGLE,
+              size: 4,
+            },
+          },
+          spacing: { before: 80, after: 80 },
+          children: [],
+        })
+      );
+      continue;
+    }
+
     if (!trimmed) {
+      // Find next non-empty line
+      let nextIdx = i + 1;
+      while (nextIdx < lines.length && !lines[nextIdx].trim()) {
+        nextIdx++;
+      }
+      const nextLineTrimmed = nextIdx < lines.length ? lines[nextIdx].trim() : "";
+      const nextIsBullet =
+        nextLineTrimmed.startsWith("- ") ||
+        nextLineTrimmed.startsWith("* ") ||
+        nextLineTrimmed.startsWith("• ");
+      const nextIsNumbered = /^\d+\.\s+/.test(nextLineTrimmed);
+
+      // If inside a list (or next line is list), don't insert blank paragraph!
+      if (nextIsBullet || nextIsNumbered) {
+        i = nextIdx - 1;
+        continue;
+      }
+
       elements.push(
         new Paragraph({
           spacing: { before: 60, after: 60 },
           children: [],
         })
       );
+      i = nextIdx - 1;
       continue;
     }
 

@@ -83,7 +83,7 @@ export const ServerUploadModal: React.FC<ServerUploadModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-xs p-4 animate-fade-in">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 dark:bg-black/80 backdrop-blur-xs p-4 animate-fade-in">
       <div className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-zinc-800">
         {/* Header */}
         <div className="px-5 py-4 bg-gradient-to-r from-violet-900 to-[#4A227A] text-white flex items-center justify-between">
