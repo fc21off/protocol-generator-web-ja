@@ -37,6 +37,16 @@ export function escapeLatexSpecialChars(input) {
       case "\\":
         result += "\\textbackslash{}";
         break;
+      case '"':
+        result += "\\textquotedbl{}";
+        break;
+      case "„":
+        result += "\\glqq{}";
+        break;
+      case "“":
+      case "”":
+        result += "\\grqq{}";
+        break;
       default:
         result += c;
     }
