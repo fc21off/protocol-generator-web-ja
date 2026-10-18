@@ -394,9 +394,6 @@ export function App() {
   const handleSavePdf = (signedBase64?: string) => {
     const targetBase64 = signedBase64 || pdfBase64;
     if (!targetBase64) return;
-    if (signedBase64 && signedBase64 !== pdfBase64) {
-      setPdfBase64(signedBase64);
-    }
     setIsSaving(true);
     try {
       const defaultFilename = getPdfFilename();
