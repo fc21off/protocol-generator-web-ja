@@ -1028,31 +1028,32 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               <span className="sm:hidden">PDF</span>
             </button>
 
-            {/* Export as Word */}
-            {onExportDocx && (
-              <button
-                type="button"
-                onClick={onExportDocx}
-                title="Als Word-Dokument (.docx) exportieren"
-                className="flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 hover:bg-blue-50/60 dark:hover:bg-zinc-700/80 border border-slate-200 dark:border-zinc-700 hover:border-blue-300 dark:hover:border-blue-500/60 transition-colors shadow-xs group shrink-0"
-              >
-                <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform" />
-                <span className="hidden sm:inline">Als Word (.docx)</span>
-                <span className="sm:hidden">Word</span>
-              </button>
-            )}
-
-            {/* Upload to Server */}
+            {/* Upload to Server (Always visible on mobile & desktop) */}
             <button
               type="button"
               onClick={handleUploadClick}
               disabled={isSaving || isProcessingSave || isLoadingPdf}
               title="Auf den Server übertragen"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-50 dark:bg-zinc-800 text-[#4A227A] dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-zinc-700/80 border border-violet-200 dark:border-zinc-700 transition-colors shadow-xs shrink-0"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-50 dark:bg-zinc-800 text-[#4A227A] dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-zinc-700/80 border border-violet-200 dark:border-zinc-700 transition-colors shadow-xs shrink-0 active:scale-98"
             >
               <CloudUpload className="w-3.5 h-3.5" />
               <span className="hidden md:inline">Auf Server hochladen</span>
+              <span className="md:hidden">Server</span>
             </button>
+
+            {/* Export as Word (Desktop only, hidden on mobile) */}
+            {onExportDocx && (
+              <button
+                type="button"
+                onClick={onExportDocx}
+                title="Als Word-Dokument (.docx) exportieren"
+                className="hidden sm:flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-800 text-slate-700 dark:text-zinc-200 hover:bg-blue-50/60 dark:hover:bg-zinc-700/80 border border-slate-200 dark:border-zinc-700 hover:border-blue-300 dark:hover:border-blue-500/60 transition-colors shadow-xs group shrink-0"
+              >
+                <FileText className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover:scale-105 transition-transform" />
+                <span className="hidden md:inline">Als Word (.docx)</span>
+                <span className="md:hidden">Word</span>
+              </button>
+            )}
 
             {/* Close Button */}
             <button
