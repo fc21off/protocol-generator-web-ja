@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from "react";
 import {
   Download,
-  CloudUpload,
   X,
   FileCheck,
   PenTool,
@@ -29,7 +28,6 @@ interface PdfViewerModalProps {
   pdfBase64: string | null;
   onDownload: (signedBase64?: string) => void;
   onExportDocx?: () => void;
-  onUpload: (signedBase64?: string) => void;
   isSaving: boolean;
   compilerUsed: string;
 }
@@ -133,7 +131,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
   pdfBase64,
   onDownload,
   onExportDocx,
-  onUpload,
   isSaving,
   compilerUsed,
 }) => {
@@ -887,16 +884,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
     }
   };
 
-  const handleUploadClick = async () => {
-    setIsProcessingSave(true);
-    try {
-      const finalBase64 = await generateSignedPdfBase64();
-      onUpload(finalBase64);
-    } finally {
-      setIsProcessingSave(false);
-    }
-  };
-
   if (!isOpen || !pdfBase64) return null;
 
   return (
@@ -939,19 +926,6 @@ export const PdfViewerModal: React.FC<PdfViewerModalProps> = ({
               )}
               <span className="hidden sm:inline">PDF Herunterladen</span>
               <span className="sm:hidden">PDF</span>
-            </button>
-
-            {/* Upload to Server (Always visible on mobile & desktop) */}
-            <button
-              type="button"
-              onClick={handleUploadClick}
-              disabled={isSaving || isProcessingSave || isLoadingPdf}
-              title="Auf den Server übertragen"
-              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold bg-violet-50 dark:bg-zinc-800 text-[#4A227A] dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-zinc-700/80 border border-violet-200 dark:border-zinc-700 transition-colors shadow-xs shrink-0 active:scale-98"
-            >
-              <CloudUpload className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Auf Server hochladen</span>
-              <span className="md:hidden">Server</span>
             </button>
 
             {/* Export as Word (Desktop only, hidden on mobile) */}

@@ -20,7 +20,6 @@ import {
 import { Header } from "./components/Header";
 import { FormField } from "./components/FormField";
 import { PdfViewerModal } from "./components/PdfViewerModal";
-import { ServerUploadModal } from "./components/ServerUploadModal";
 import { CompilerModal } from "./components/CompilerModal";
 import { HomeScreen } from "./components/HomeScreen";
 import { NewProtocolModal } from "./components/NewProtocolModal";
@@ -58,12 +57,10 @@ export function App() {
 
   const [isCompiling, setIsCompiling] = useState(false);
   const [pdfBase64, setPdfBase64] = useState<string | null>(null);
-  const [signedPdfBase64, setSignedPdfBase64] = useState<string | null>(null);
   const [compilerUsed, setCompilerUsed] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [compilerStatus, setCompilerStatus] = useState<CompilerStatus | null>(null);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-  const [isServerModalOpen, setIsServerModalOpen] = useState(false);
   const [isCompilerModalOpen, setIsCompilerModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [protocolHistory, setProtocolHistory] = useState<ProtocolHistoryItem[]>(() =>
@@ -241,7 +238,6 @@ export function App() {
       const result: CompileResult = await response.json();
       if (result.success && result.pdfBase64) {
         setPdfBase64(result.pdfBase64);
-        setSignedPdfBase64(null);
         setCompilerUsed(result.compilerUsed);
         setIsPdfModalOpen(true);
       } else {
@@ -261,7 +257,7 @@ export function App() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't intercept if modals are open
-      if (isPdfModalOpen || isServerModalOpen || isCompilerModalOpen || isNewProtocolModalOpen) {
+      if (isPdfModalOpen || isCompilerModalOpen || isNewProtocolModalOpen) {
         return;
       }
 
@@ -292,7 +288,7 @@ export function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentScreen, handleCompile, undo, redo, isPdfModalOpen, isServerModalOpen, isCompilerModalOpen, isNewProtocolModalOpen]);
+  }, [currentScreen, handleCompile, undo, redo, isPdfModalOpen, isCompilerModalOpen, isNewProtocolModalOpen]);
 
   // Helper for generating sanitized default filename
   const getPdfFilename = () => {
@@ -452,7 +448,6 @@ export function App() {
             onSaveDraft={handleSaveDraft}
             onLoadDraft={handleLoadDraft}
             onReset={handleReset}
-            onOpenServerModal={() => setIsServerModalOpen(true)}
             compilerStatus={compilerStatus}
             onOpenCompilerModal={() => setIsCompilerModalOpen(true)}
             onBackToHome={() => setCurrentScreen("home")}
@@ -738,20 +733,8 @@ export function App() {
         pdfBase64={pdfBase64}
         onDownload={(signedBase64) => handleSavePdf(signedBase64)}
         onExportDocx={handleExportDocx}
-        onUpload={(signedBase64) => {
-          if (signedBase64) setSignedPdfBase64(signedBase64);
-          setIsServerModalOpen(true);
-        }}
         isSaving={isSaving}
         compilerUsed={compilerUsed}
-      />
-
-      {/* Server Upload Modal */}
-      <ServerUploadModal
-        isOpen={isServerModalOpen}
-        onClose={() => setIsServerModalOpen(false)}
-        data={data}
-        pdfBase64={signedPdfBase64 || pdfBase64}
       />
 
       {/* Compiler Setup Modal */}

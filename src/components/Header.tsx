@@ -3,7 +3,6 @@ import {
   Save,
   FolderOpen,
   RotateCcw,
-  CloudUpload,
   Cpu,
   MoreVertical,
   CheckCircle2,
@@ -29,7 +28,6 @@ interface HeaderProps {
   onSaveDraft: () => void;
   onLoadDraft: () => void;
   onReset: () => void;
-  onOpenServerModal: () => void;
   compilerStatus: CompilerStatus | null;
   onOpenCompilerModal: () => void;
   onBackToHome?: () => void;
@@ -46,7 +44,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSaveDraft,
   onLoadDraft,
   onReset,
-  onOpenServerModal,
   compilerStatus,
   onOpenCompilerModal,
   onBackToHome,
@@ -289,20 +286,7 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            <div className="h-px bg-slate-100 dark:bg-zinc-800 my-1" />
 
-            {/* Server Settings / Upload */}
-            <button
-              type="button"
-              onClick={() => {
-                setIsMenuOpen(false);
-                onOpenServerModal();
-              }}
-              className="w-full px-3.5 py-2 text-left text-xs flex items-center gap-2.5 text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition-colors"
-            >
-              <CloudUpload className="w-4 h-4 text-violet-600 dark:text-violet-400" />
-              <span>Server-Ablage</span>
-            </button>
 
             {/* Download Windows Desktop App (only in PC Browser, not in PWA and not on Mobile) */}
             {showDesktopDownload && (

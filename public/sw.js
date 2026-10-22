@@ -1,5 +1,5 @@
 // Service Worker for Jugendausschuss Leonberg - Protokoll Generator
-const CACHE_NAME = "ja-protokoll-v6";
+const CACHE_NAME = "ja-protokoll-v7";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
